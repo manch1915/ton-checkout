@@ -23,7 +23,7 @@ from app.main import create_app
 from app.services.ports import TransferPage
 
 TEST_DB = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://checkout:checkout@localhost:5452/checkout_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://checkout:checkout@127.0.0.1:5452/checkout_test"
 )
 MERCHANT_WALLET = to_raw("0QD7ya0WKpRYHY4eKNdg4QE9J6CvVw-Ff7XNBAhj6eQOA_ML")
 USDT_MASTER = "0:" + "c5" * 32

@@ -110,7 +110,18 @@ async def test_demo_store_cannot_change_wallet(
     client: httpx.AsyncClient, merchant: Merchant
 ) -> None:
     await client.post("/api/auth/demo")
-    response = await client.patch("/api/dashboard/settings", json={"wallet": "0:" + "aa" * 32})
+    payload = (await client.post("/api/auth/ton-proof/payload")).json()["payload"]
+    proof = {
+        "address": "0:" + "aa" * 32,
+        "network": "-3",
+        "proof": {
+            "timestamp": 1,
+            "domain": {"lengthBytes": 13, "value": "checkout.test"},
+            "payload": payload,
+            "signature": "AA==",
+        },
+    }
+    response = await client.post("/api/dashboard/wallet", json=proof)
     assert response.status_code == 403
 
 
@@ -147,7 +158,11 @@ async def test_shop_order_is_fulfilled_by_signed_webhook(
     # Deliver through the real dispatcher, routed back into the app instead of the network.
     transport = httpx.ASGITransport(app=client._transport.app)  # type: ignore[attr-defined]
     async with httpx.AsyncClient(transport=transport, base_url="http://api") as loopback:
-        dispatcher = WebhookDispatcher(container.sessions, loopback)
+        dispatcher = WebhookDispatcher(
+            container.sessions,
+            loopback,
+            trusted_urls=frozenset({container.settings.shop_webhook_url}),
+        )
         assert await dispatcher.run_due() == 2  # invoice.created and invoice.paid
 
     fulfilled = (await client.get(f"/api/shop/orders/{order['id']}")).json()

@@ -41,7 +41,7 @@ async def test_delivery_is_signed_and_verifiable(
     route = respx.post(HOOK).mock(return_value=httpx.Response(200, json={"ok": True}))
 
     async with httpx.AsyncClient() as http:
-        sent = await WebhookDispatcher(container.sessions, http).run_due()
+        sent = await WebhookDispatcher(container.sessions, http, allow_private=True).run_due()
 
     assert sent == 1
     request = route.calls.last.request
@@ -58,7 +58,7 @@ async def test_failed_delivery_is_retried_later(
     respx.post(HOOK).mock(return_value=httpx.Response(503, text="maintenance"))
 
     async with httpx.AsyncClient() as http:
-        await WebhookDispatcher(container.sessions, http).run_due()
+        await WebhookDispatcher(container.sessions, http, allow_private=True).run_due()
 
     async with container.sessions() as s:
         delivery = (await s.scalars(select(WebhookDelivery))).one()

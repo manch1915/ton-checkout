@@ -84,7 +84,11 @@ class Container:
 
     def dispatcher(self) -> WebhookDispatcher:
         return WebhookDispatcher(
-            self.sessions, self.http, retry_speedup=self.settings.webhook_retry_speedup
+            self.sessions,
+            self.http,
+            retry_speedup=self.settings.webhook_retry_speedup,
+            trusted_urls=frozenset({self.settings.shop_webhook_url}),
+            allow_private=self.settings.env == "dev",
         )
 
     def proof_verifier(self) -> TonProofVerifier:

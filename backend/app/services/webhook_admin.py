@@ -21,12 +21,10 @@ class WebhookAdminError(Exception):
 
 
 class WebhookAdmin:
-    def __init__(
-        self, session: AsyncSession, *, allow_private: bool, allowed_hosts: tuple[str, ...]
-    ):
+    def __init__(self, session: AsyncSession, *, allow_private: bool, trusted_urls: frozenset[str]):
         self._session = session
         self._allow_private = allow_private
-        self._allowed_hosts = allowed_hosts
+        self._trusted = trusted_urls
 
     async def endpoints(self, merchant_id: str) -> list[WebhookEndpoint]:
         rows = await self._session.scalars(
@@ -48,10 +46,7 @@ class WebhookAdmin:
         try:
             # getaddrinfo blocks, keep it off the event loop.
             await asyncio.to_thread(
-                validate_webhook_url,
-                url,
-                allow_private=self._allow_private,
-                allowed_hosts=self._allowed_hosts,
+                validate_webhook_url, url, trusted=self._allow_private or url in self._trusted
             )
         except WebhookUrlError as exc:
             raise WebhookAdminError(str(exc)) from exc

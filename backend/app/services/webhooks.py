@@ -1,3 +1,4 @@
+import asyncio
 import ipaddress
 import json
 import random
@@ -36,25 +37,49 @@ class WebhookUrlError(ValueError):
     pass
 
 
-def validate_webhook_url(url: str, *, allow_private: bool, allowed_hosts: tuple[str, ...]) -> str:
-    """Reject URLs that would make our worker call into a private network (SSRF)."""
+def resolve_public(host: str, port: int) -> str:
+    """Resolve a host and make sure every address it points to is public."""
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise WebhookUrlError(f"cannot resolve {host}") from exc
+    addresses = [ipaddress.ip_address(info[4][0]) for info in infos]
+    for ip in addresses:
+        if not ip.is_global or ip.is_multicast:
+            raise WebhookUrlError("URL points to a private network address")
+    return str(addresses[0])
+
+
+def validate_webhook_url(url: str, *, trusted: bool) -> str:
+    """Reject URLs that would make our worker call into a private network (SSRF).
+
+    `trusted` is for our own demo shop inside the docker network and for local development.
+    """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise WebhookUrlError("URL must start with http:// or https://")
-    host = parsed.hostname.lower()
-    if host in allowed_hosts or allow_private:
+    if trusted:
         return url
     if parsed.scheme != "https":
         raise WebhookUrlError("use an https:// URL")
-    try:
-        infos = socket.getaddrinfo(host, parsed.port or 443, proto=socket.IPPROTO_TCP)
-    except socket.gaierror as exc:
-        raise WebhookUrlError(f"cannot resolve {host}") from exc
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            raise WebhookUrlError("URL points to a private network address")
+    resolve_public(parsed.hostname, parsed.port or 443)
     return url
+
+
+def pin_request(url: str) -> tuple[str, dict[str, str], dict[str, str]]:
+    """Connect to the address we just checked, not to whatever DNS returns a moment later.
+
+    Without this a host could resolve to a public IP at validation time and to 127.0.0.1
+    when the request is made (DNS rebinding).
+    """
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    ip = resolve_public(host, parsed.port or 443)
+    netloc = f"[{ip}]" if ":" in ip else ip
+    if parsed.port:
+        netloc += f":{parsed.port}"
+    pinned = parsed._replace(netloc=netloc).geturl()
+    return pinned, {"Host": parsed.netloc}, {"sni_hostname": host}
 
 
 def new_webhook_secret() -> str:
@@ -86,10 +111,14 @@ class WebhookDispatcher:
         client: httpx.AsyncClient,
         *,
         retry_speedup: float = 1.0,
+        trusted_urls: frozenset[str] = frozenset(),
+        allow_private: bool = False,
     ):
         self._factory = factory
         self._client = client
         self._speedup = retry_speedup
+        self._trusted = trusted_urls
+        self._allow_private = allow_private
 
     async def run_due(self, batch: int = 20) -> int:
         async with self._factory() as session:
@@ -119,14 +148,21 @@ class WebhookDispatcher:
         status_code: int | None = None
         error: str | None = None
         excerpt: str | None = None
+        url = delivery.endpoint.url
         try:
+            extensions: dict[str, str] = {}
+            if not (self._allow_private or url in self._trusted):
+                url, extra, extensions = await asyncio.to_thread(pin_request, url)
+                headers.update(extra)
             response = await self._client.post(
-                delivery.endpoint.url, content=body, headers=headers, timeout=10
+                url, content=body, headers=headers, timeout=10, extensions=extensions
             )
             status_code = response.status_code
             excerpt = response.text[:500]
         except httpx.HTTPError as exc:
             error = f"{type(exc).__name__}: {exc}"[:300]
+        except WebhookUrlError as exc:
+            error = str(exc)
         duration = int((time.perf_counter() - started) * 1000)
 
         delivery.attempts += 1

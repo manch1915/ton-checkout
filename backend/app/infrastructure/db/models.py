@@ -61,7 +61,8 @@ class Merchant(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("mer"))
     name: Mapped[str] = mapped_column(String(120))
     owner_address: Mapped[str | None] = mapped_column(String(80), unique=True)
-    wallet_address: Mapped[str] = mapped_column(String(80))
+    # One store per receiving wallet: payments are matched to stores by this address.
+    wallet_address: Mapped[str] = mapped_column(String(80), unique=True)
     accept_ton: Mapped[bool] = mapped_column(Boolean, default=True)
     accept_usdt: Mapped[bool] = mapped_column(Boolean, default=True)
     accept_stars: Mapped[bool] = mapped_column(Boolean, default=True)

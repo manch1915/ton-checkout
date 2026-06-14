@@ -34,8 +34,6 @@ class Settings(BaseSettings):
 
     stars_per_usd: float = 50.0
     webhook_retry_speedup: float = 1.0
-    # Hosts our worker may call even though they resolve to private addresses (docker network).
-    webhook_allowed_hosts: list[str] = Field(default_factory=lambda: ["api"])
 
     rates_ttl_seconds: int = 60
     fallback_ton_usd: float = 1.35

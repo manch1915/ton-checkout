@@ -13,7 +13,7 @@ from app.services.ton_proof import (
     TonProofVerifier,
     proof_digest,
 )
-from app.services.webhooks import WebhookUrlError, validate_webhook_url
+from app.services.webhooks import WebhookUrlError, pin_request, validate_webhook_url
 from tests.conftest import FakeProvider
 
 DOMAIN = "checkout.test"
@@ -56,12 +56,28 @@ def test_webhook_signature_accepts_any_of_rotated_signatures() -> None:
 )
 def test_webhook_url_guard(url: str) -> None:
     with pytest.raises(WebhookUrlError):
-        validate_webhook_url(url, allow_private=False, allowed_hosts=())
+        validate_webhook_url(url, trusted=False)
 
 
-def test_webhook_url_allowlist_for_internal_service() -> None:
+def test_webhook_url_trusted_internal_service() -> None:
     url = "http://api/api/shop/webhook"
-    assert validate_webhook_url(url, allow_private=False, allowed_hosts=("api",)) == url
+    assert validate_webhook_url(url, trusted=True) == url
+
+
+def test_pinned_request_keeps_host_for_tls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "socket.getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("93.184.215.14", 443))]
+    )
+    url, headers, ext = pin_request("https://merchant.example/hooks?x=1")
+    assert url == "https://93.184.215.14/hooks?x=1"
+    assert headers == {"Host": "merchant.example"}
+    assert ext == {"sni_hostname": "merchant.example"}
+
+
+def test_pinned_request_refuses_rebinding_to_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("127.0.0.1", 443))])
+    with pytest.raises(WebhookUrlError):
+        pin_request("https://merchant.example/hooks")
 
 
 def _wallet(key: SigningKey) -> tuple[str, str]:

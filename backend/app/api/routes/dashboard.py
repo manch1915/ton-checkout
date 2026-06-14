@@ -9,18 +9,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import ContainerDep, MerchantDep, SessionDep, rate_limit
-from app.api.schemas import CreateInvoiceRequest, InvoicePage
+from app.api.schemas import CreateInvoiceRequest, InvoicePage, VerifyRequest, verify_wallet_proof
 from app.domain.enums import Asset, DeliveryState, EventType, InvoiceStatus, Mode
 from app.domain.pricing import format_units
 from app.infrastructure.db.models import (
     ApiKey,
     Event,
     Invoice,
+    Merchant,
     Transfer,
     WebhookDelivery,
     WebhookEndpoint,
 )
-from app.infrastructure.ton.address import is_valid, to_friendly, to_raw
+from app.infrastructure.ton.address import to_friendly
 from app.services.auth import ApiKeyService
 from app.services.invoices import InvoiceError, InvoiceFilter
 from app.services.payments import Outcome
@@ -49,7 +50,6 @@ class MerchantProfile(BaseModel):
 
 class SettingsUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    wallet: str | None = Field(default=None, max_length=80)
     accept_ton: bool | None = None
     accept_usdt: bool | None = None
     accept_stars: bool | None = None
@@ -214,11 +214,11 @@ def _delivery_view(delivery: WebhookDelivery) -> DeliveryView:
     )
 
 
-def _webhooks(session: SessionDep, container: ContainerDep) -> WebhookAdmin:
+def _webhooks(session: SessionDep, container: ContainerDep, merchant: Merchant) -> WebhookAdmin:
+    # Only the demo store may point at our internal shop endpoint.
+    trusted = {container.settings.shop_webhook_url} if merchant.is_demo else set()
     return WebhookAdmin(
-        session,
-        allow_private=container.settings.env == "dev",
-        allowed_hosts=tuple(container.settings.webhook_allowed_hosts),
+        session, allow_private=container.settings.env == "dev", trusted_urls=frozenset(trusted)
     )
 
 
@@ -257,16 +257,31 @@ async def me(merchant: MerchantDep, container: ContainerDep) -> MerchantProfile:
 async def update_settings(
     body: SettingsUpdate, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> MerchantProfile:
-    if body.wallet is not None:
-        if merchant.is_demo:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "the demo store keeps its wallet")
-        if not is_valid(body.wallet):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid TON address")
-        merchant.wallet_address = to_raw(body.wallet)
     for field in ("name", "accept_ton", "accept_usdt", "accept_stars", "invoice_ttl_minutes"):
         value = getattr(body, field)
         if value is not None:
             setattr(merchant, field, value)
+    await session.commit()
+    return _profile(merchant, container)
+
+
+@router.post("/wallet")
+async def change_wallet(
+    body: VerifyRequest, merchant: MerchantDep, container: ContainerDep, session: SessionDep
+) -> MerchantProfile:
+    """The receiving wallet changes only after a TON Connect proof from that wallet,
+    otherwise anyone could point their store at someone else's wallet and its payments."""
+    if merchant.is_demo:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "the demo store keeps its wallet")
+    wallet = await verify_wallet_proof(body, container)
+    taken = await session.scalar(
+        select(Merchant.id).where(Merchant.wallet_address == wallet, Merchant.id != merchant.id)
+    )
+    if taken:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "this wallet already belongs to another store"
+        )
+    merchant.wallet_address = wallet
     await session.commit()
     return _profile(merchant, container)
 
@@ -396,7 +411,7 @@ async def export_invoices(
 
 def _csv_safe(value: str) -> str:
     # Spreadsheet apps execute cells that start with these characters as formulas.
-    return "'" + value if value[:1] in ("=", "+", "-", "@") else value
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
 
 
 @router.post("/invoices", status_code=status.HTTP_201_CREATED)
@@ -431,7 +446,9 @@ async def invoice_detail(
     events = await session.scalars(
         select(Event).where(Event.invoice_id == invoice.id).order_by(Event.created_at)
     )
-    deliveries = await _webhooks(session, container).deliveries(merchant.id, invoice_id=invoice.id)
+    deliveries = await _webhooks(session, container, merchant).deliveries(
+        merchant.id, invoice_id=invoice.id
+    )
     testnet = container.settings.is_testnet
     return InvoiceDetail(
         invoice=container.view(invoice),
@@ -544,7 +561,10 @@ def _endpoint_view(endpoint: WebhookEndpoint) -> EndpointView:
 async def list_endpoints(
     merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> list[EndpointView]:
-    return [_endpoint_view(e) for e in await _webhooks(session, container).endpoints(merchant.id)]
+    return [
+        _endpoint_view(e)
+        for e in await _webhooks(session, container, merchant).endpoints(merchant.id)
+    ]
 
 
 @router.post("/webhooks", status_code=status.HTTP_201_CREATED)
@@ -552,7 +572,7 @@ async def create_endpoint(
     body: NewEndpointRequest, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> EndpointView:
     try:
-        endpoint = await _webhooks(session, container).create(merchant.id, body.url)
+        endpoint = await _webhooks(session, container, merchant).create(merchant.id, body.url)
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     return _endpoint_view(endpoint)
@@ -567,7 +587,7 @@ async def toggle_endpoint(
     session: SessionDep,
 ) -> EndpointView:
     try:
-        endpoint = await _webhooks(session, container).set_enabled(
+        endpoint = await _webhooks(session, container, merchant).set_enabled(
             merchant.id, endpoint_id, body.enabled
         )
     except WebhookAdminError as exc:
@@ -580,7 +600,9 @@ async def rotate_secret(
     endpoint_id: str, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> EndpointView:
     try:
-        endpoint = await _webhooks(session, container).rotate_secret(merchant.id, endpoint_id)
+        endpoint = await _webhooks(session, container, merchant).rotate_secret(
+            merchant.id, endpoint_id
+        )
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return _endpoint_view(endpoint)
@@ -591,7 +613,7 @@ async def delete_endpoint(
     endpoint_id: str, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> None:
     try:
-        await _webhooks(session, container).delete(merchant.id, endpoint_id)
+        await _webhooks(session, container, merchant).delete(merchant.id, endpoint_id)
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
 
@@ -601,7 +623,7 @@ async def test_endpoint(
     endpoint_id: str, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> DeliveryView:
     try:
-        delivery = await _webhooks(session, container).send_test(merchant.id, endpoint_id)
+        delivery = await _webhooks(session, container, merchant).send_test(merchant.id, endpoint_id)
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     await session.refresh(delivery, ["event", "endpoint"])
@@ -616,7 +638,7 @@ async def list_deliveries(
     endpoint_id: str | None = None,
     state: DeliveryState | None = None,
 ) -> list[DeliveryView]:
-    deliveries = await _webhooks(session, container).deliveries(
+    deliveries = await _webhooks(session, container, merchant).deliveries(
         merchant.id, endpoint_id=endpoint_id, state=state
     )
     return [_delivery_view(d) for d in deliveries]
@@ -627,7 +649,9 @@ async def delivery_detail(
     delivery_id: str, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> DeliveryDetail:
     try:
-        delivery, attempts = await _webhooks(session, container).delivery(merchant.id, delivery_id)
+        delivery, attempts = await _webhooks(session, container, merchant).delivery(
+            merchant.id, delivery_id
+        )
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return DeliveryDetail(
@@ -652,7 +676,7 @@ async def resend_delivery(
     delivery_id: str, merchant: MerchantDep, container: ContainerDep, session: SessionDep
 ) -> DeliveryView:
     try:
-        delivery = await _webhooks(session, container).resend(merchant.id, delivery_id)
+        delivery = await _webhooks(session, container, merchant).resend(merchant.id, delivery_id)
     except WebhookAdminError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return _delivery_view(delivery)

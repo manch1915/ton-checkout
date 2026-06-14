@@ -1,37 +1,18 @@
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.api.deps import ContainerDep, SessionDep, rate_limit
+from app.api.schemas import VerifyRequest, verify_wallet_proof
 from app.infrastructure.db.models import Merchant
 from app.services.auth import SESSION_COOKIE, AuthError, MerchantService, issue_session
-from app.services.ton_proof import ProofError, TonProof
 
 router = APIRouter(prefix="/api/auth", tags=["auth"], dependencies=[Depends(rate_limit)])
 
 
 class PayloadResponse(BaseModel):
     payload: str
-
-
-class ProofDomain(BaseModel):
-    length_bytes: int = Field(alias="lengthBytes")
-    value: str = Field(max_length=128)
-
-
-class ProofBody(BaseModel):
-    timestamp: int
-    domain: ProofDomain
-    payload: str = Field(max_length=128)
-    signature: str = Field(max_length=200)
-    state_init: str | None = Field(default=None, max_length=4096)
-
-
-class VerifyRequest(BaseModel):
-    address: str = Field(max_length=80)
-    network: str = Field(max_length=8)
-    proof: ProofBody
 
 
 class SessionResponse(BaseModel):
@@ -71,22 +52,7 @@ async def proof_payload(container: ContainerDep) -> PayloadResponse:
 async def verify_proof(
     body: VerifyRequest, response: Response, container: ContainerDep, session: SessionDep
 ) -> SessionResponse:
-    if not await container.nonces.consume(body.proof.payload):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "login request expired, try again")
-    proof = TonProof(
-        address=body.address,
-        network=body.network,
-        timestamp=body.proof.timestamp,
-        domain=body.proof.domain.value,
-        domain_length=body.proof.domain.length_bytes,
-        payload=body.proof.payload,
-        signature=body.proof.signature,
-        state_init=body.proof.state_init,
-    )
-    try:
-        owner = await container.proof_verifier().verify(proof, expected_payload=body.proof.payload)
-    except ProofError as exc:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
+    owner = await verify_wallet_proof(body, container)
     merchant = await MerchantService(session).login_wallet(owner)
     return _start_session(response, container, merchant)
 

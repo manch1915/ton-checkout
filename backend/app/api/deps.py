@@ -76,13 +76,15 @@ def mode_of(key: ApiKey) -> Mode:
 
 
 async def rate_limit(request: Request, container: ContainerDep) -> None:
-    """Fixed one-minute window per client IP, kept in Redis so it holds across API replicas."""
+    """Fixed one-minute window per client IP, kept in Redis so it holds across API replicas.
+
+    The client IP comes from uvicorn, which reads X-Forwarded-For only from trusted proxies
+    (--forwarded-allow-ips), so a caller cannot pick its own bucket.
+    """
     redis = container.redis
     if redis is None:
         return
-    client = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
-        request.client.host if request.client else "unknown"
-    )
+    client = request.client.host if request.client else "unknown"
     window = int(time.time() // 60)
     key = f"rl:{client}:{window}"
     count = await redis.incr(key)
