@@ -76,6 +76,16 @@ def build_dispatcher(container: Container) -> Dispatcher:
                 ),
             )
         log.info("stars.paid", invoice=payment.invoice_payload, outcome=result.outcome)
+        if container.settings.stars_auto_refund and message.bot is not None:
+            await message.bot.refund_star_payment(
+                user_id=message.from_user.id,
+                telegram_payment_charge_id=payment.telegram_payment_charge_id,
+            )
+            await message.answer(
+                "Payment received, your download is waiting in the shop. "
+                "This is a demo, so the Stars are already on their way back to you."
+            )
+            return
         await message.answer("Payment received. Your download is waiting in the shop.")
 
     dispatcher = Dispatcher()

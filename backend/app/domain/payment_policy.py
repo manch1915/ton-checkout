@@ -29,9 +29,9 @@ def allowed_assets(kind: ProductKind, channel: Channel) -> PolicyDecision:
     if channel in _IN_TELEGRAM:
         return PolicyDecision(
             (Asset.TON, Asset.USDT),
-            "Physical goods and offline services can be paid in TON or USDT via TON Connect.",
+            "Tickets and physical goods can be paid in Gram or USDT through TON Connect.",
         )
     return PolicyDecision(
         (Asset.TON, Asset.USDT),
-        "On a website any on-chain method is allowed. Stars work only inside Telegram.",
+        "On a website any on-chain method works. Stars are available only inside Telegram.",
     )

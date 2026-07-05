@@ -78,8 +78,9 @@ class InvoiceService:
                 stars = data.stars_amount or self._stars_for(data.fiat_amount, rates, fiat)
                 quotes[asset.value] = str(stars)
                 continue
-            quotes[asset.value] = str(fiat_to_units(data.fiat_amount, rates[asset], asset))
-            used_rates[asset.value] = str(rates[asset])
+            rate = rates[asset].quantize(Decimal("0.0001"))
+            quotes[asset.value] = str(fiat_to_units(data.fiat_amount, rate, asset))
+            used_rates[asset.value] = str(rate)
 
         ttl = data.ttl_minutes or merchant.invoice_ttl_minutes
         invoice = Invoice(

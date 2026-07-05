@@ -51,6 +51,15 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     for module in (pay, merchant_api, auth, dashboard, shop):
         app.include_router(module.router)
 
+    @app.get("/tonconnect-manifest.json", tags=["service"], include_in_schema=False)
+    async def tonconnect_manifest() -> dict[str, str]:
+        # Wallets fetch this to show who asks for a connection, so it must use the public URL.
+        return {
+            "url": settings.public_url,
+            "name": "TON Checkout",
+            "iconUrl": f"{settings.public_url}/icon-180.png",
+        }
+
     @app.get("/api/health", tags=["service"])
     async def health(container: ContainerDep) -> Health:
         async with container.sessions() as session:

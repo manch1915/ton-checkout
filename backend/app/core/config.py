@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     telegram_bot_token: SecretStr | None = None
     telegram_bot_username: str = ""
     telegram_test_env: bool = True
+    # For a public demo on a production bot: give Stars back right after the order is fulfilled.
+    stars_auto_refund: bool = False
 
     ton_proof_domain: str = "localhost:5173"
     ton_proof_ttl_seconds: int = 15 * 60
