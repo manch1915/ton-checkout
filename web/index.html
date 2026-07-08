@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Non-custodial checkout for Gram, USDT on TON and Telegram Stars. Invoices, live payment status, signed webhooks." />
+    <meta name="theme-color" content="#eef2f6" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>TON Checkout</title>
+    <script>
+      try {
+        var t = localStorage.getItem("tc-theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
