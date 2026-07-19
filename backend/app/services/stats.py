@@ -14,7 +14,8 @@ from app.infrastructure.db.models import Event, Invoice, Merchant, Transfer, Web
 class DayVolume:
     day: date
     fiat: Decimal
-    by_asset: dict[Asset, Decimal]
+    # Fiat value per asset, so a chart can stack Gram, USDT and Stars on one axis.
+    fiat_by_asset: dict[Asset, Decimal]
     paid: int
 
 
@@ -65,11 +66,10 @@ class StatsService:
             if d not in per_day or asset is None:
                 continue
             bucket = per_day[d]
-            amount = units_to_decimal(int(received or 0), asset)
-            bucket.by_asset[asset] += amount
-            totals[asset] += amount
+            bucket.fiat_by_asset[asset] += fiat or 0
+            totals[asset] += units_to_decimal(int(received or 0), asset)
             per_day[d] = DayVolume(
-                d, bucket.fiat + (fiat or 0), bucket.by_asset, bucket.paid + count
+                d, bucket.fiat + (fiat or 0), bucket.fiat_by_asset, bucket.paid + count
             )
 
         counts = (

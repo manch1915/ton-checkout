@@ -299,9 +299,9 @@ async def stats(
             DayPoint(
                 day=d.day,
                 fiat=d.fiat,
-                ton=d.by_asset[Asset.TON],
-                usdt=d.by_asset[Asset.USDT],
-                stars=d.by_asset[Asset.STARS],
+                ton=d.fiat_by_asset[Asset.TON],
+                usdt=d.fiat_by_asset[Asset.USDT],
+                stars=d.fiat_by_asset[Asset.STARS],
                 paid=d.paid,
             )
             for d in summary.days
