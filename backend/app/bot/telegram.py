@@ -24,11 +24,13 @@ def build_dispatcher(container: Container) -> Dispatcher:
 
     @router.message(CommandStart())
     async def start(message: Message) -> None:
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="Open the shop", web_app=WebAppInfo(url=shop_url))]
-            ]
+        # Telegram opens Mini Apps only over HTTPS; a local run gets a plain link instead.
+        button = (
+            InlineKeyboardButton(text="Open the shop", web_app=WebAppInfo(url=shop_url))
+            if shop_url.startswith("https://")
+            else InlineKeyboardButton(text="Open the shop", url=shop_url)
         )
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button]])
         await message.answer(
             "Cellar Nine sells concert tickets and recordings.\n\n"
             "Tickets are paid in Gram or USDT on TON testnet, recordings in Telegram Stars. "

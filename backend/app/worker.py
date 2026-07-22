@@ -31,6 +31,20 @@ async def _expire(container: Container) -> int:
         return await container.invoices(session).expire_due()
 
 
+async def _run_bot(container: Container) -> None:
+    """The bot is optional: a bad token or a Telegram outage must not stop payment processing."""
+    assert container.bot is not None
+    dispatcher = build_dispatcher(container)
+    delay = 5.0
+    while True:
+        try:
+            await dispatcher.start_polling(container.bot, handle_signals=False)
+        except Exception:
+            log.exception("bot.failed", retry_in=delay)
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, 300)
+
+
 async def run() -> None:
     settings = get_settings()
     configure_logging(settings.env)
@@ -43,8 +57,7 @@ async def run() -> None:
         _loop("webhooks", 2, webhooks.run_due),
     ]
     if container.bot is not None:
-        bot_dispatcher = build_dispatcher(container)
-        tasks.append(bot_dispatcher.start_polling(container.bot, handle_signals=False))
+        tasks.append(_run_bot(container))
     log.info(
         "worker.started",
         network=settings.ton_network,
