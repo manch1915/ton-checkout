@@ -7,7 +7,7 @@ export class ApiError extends Error {
   }
 }
 
-type Body = Record<string, unknown> | unknown[];
+type Body = object;
 
 async function request<T>(method: string, path: string, body?: Body): Promise<T> {
   const response = await fetch(path, {

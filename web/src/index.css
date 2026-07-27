@@ -25,6 +25,10 @@
   --danger: #b23a30;
   --danger-soft: #fbe6e3;
   --stars: #b07a00;
+  /* Chart series, checked for colour-blind separation on both surfaces. */
+  --series-ton: #2a78d6;
+  --series-usdt: #1baf7a;
+  --series-stars: #eb6834;
   --shadow: 0 1px 2px rgb(20 32 46 / 0.06), 0 8px 24px -12px rgb(20 32 46 / 0.18);
   color-scheme: light;
 }
@@ -49,6 +53,9 @@
   --danger: #f07b6f;
   --danger-soft: #3a1a17;
   --stars: #f2c14e;
+  --series-ton: #3987e5;
+  --series-usdt: #199e70;
+  --series-stars: #d95926;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -16px rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }
