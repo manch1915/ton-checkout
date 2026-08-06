@@ -1,15 +1,33 @@
 import { ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
 import { useParams } from "react-router";
 
+import { TonProvider } from "@/components/TonProvider";
 import { Notice, Skeleton, ThemeToggle } from "@/components/ui";
 import { PayCard } from "@/features/pay/PayCard";
 import { usePaymentStream } from "@/features/pay/usePaymentStream";
 import { ApiError } from "@/lib/api";
 
 export function PayPage() {
+  return (
+    <TonProvider>
+      <Payment />
+    </TonProvider>
+  );
+}
+
+function Payment() {
   const { invoiceId = "" } = useParams();
   const embedded = new URLSearchParams(window.location.search).has("embed");
   const { data, error, isPending, live } = usePaymentStream(invoiceId);
+  const paid = data?.status === "paid";
+
+  useEffect(() => {
+    // Inside the embed widget: tell the host page, it decides what happens next.
+    if (embedded && paid && window.parent !== window) {
+      window.parent.postMessage({ type: "ton-checkout:paid", invoiceId }, "*");
+    }
+  }, [embedded, paid, invoiceId]);
 
   return (
     <main className={embedded ? "p-3" : "flex min-h-dvh flex-col items-center px-4 py-8 sm:py-14"}>
