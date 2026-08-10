@@ -1,8 +1,6 @@
-import "./polyfills";
 import "./index.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { THEME, TonConnectUIProvider } from "@tonconnect/ui-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
@@ -32,16 +30,9 @@ async function boot() {
   if (!root) return;
   createRoot(root).render(
     <StrictMode>
-      <TonConnectUIProvider
-        manifestUrl={`${window.location.origin}/tonconnect-manifest.json`}
-        uiPreferences={{
-          theme: document.documentElement.dataset.theme === "dark" ? THEME.DARK : THEME.LIGHT,
-        }}
-      >
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
-      </TonConnectUIProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </StrictMode>,
   );
 }

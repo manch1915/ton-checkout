@@ -3,6 +3,7 @@ import { Store, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
+import { TonProvider } from "@/components/TonProvider";
 import { Button, Notice, ThemeToggle } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { SessionInfo } from "@/lib/types";
@@ -11,6 +12,14 @@ import { profileKey } from "./session";
 import { useWalletProof } from "./useWalletProof";
 
 export function Login() {
+  return (
+    <TonProvider>
+      <LoginScreen />
+    </TonProvider>
+  );
+}
+
+function LoginScreen() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const [demoBusy, setDemoBusy] = useState(false);

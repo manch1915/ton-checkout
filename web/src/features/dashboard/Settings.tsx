@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { useState } from "react";
 
+import { TonProvider } from "@/components/TonProvider";
 import { Button, CopyButton, Field, Notice, Skeleton, inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { Profile } from "@/lib/types";
@@ -11,6 +12,14 @@ import { profileKey, useProfile } from "./session";
 import { useWalletProof } from "./useWalletProof";
 
 export function Settings() {
+  return (
+    <TonProvider>
+      <SettingsScreen />
+    </TonProvider>
+  );
+}
+
+function SettingsScreen() {
   const profile = useProfile();
   if (!profile.data) return <Skeleton className="h-96 w-full rounded-2xl" />;
   return (

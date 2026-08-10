@@ -1,10 +1,13 @@
 import { createBrowserRouter } from "react-router";
 
-import { PayPage } from "./pages/PayPage";
 import { RouteError } from "./pages/RouteError";
 
 export const router = createBrowserRouter([
-  { path: "/pay/:invoiceId", Component: PayPage, ErrorBoundary: RouteError },
+  {
+    path: "/pay/:invoiceId",
+    ErrorBoundary: RouteError,
+    lazy: async () => ({ Component: (await import("./pages/PayPage")).PayPage }),
+  },
   {
     path: "/",
     ErrorBoundary: RouteError,

@@ -68,10 +68,16 @@ export function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <span className="font-semibold whitespace-nowrap">TON Checkout</span>
         <nav className="flex items-center text-sm whitespace-nowrap sm:gap-1">
-          <Link to="/shop" className="rounded-lg px-2 py-2 font-medium text-ink-2 hover:text-ink sm:px-3">
+          <Link
+            to="/shop"
+            className="rounded-lg px-2 py-2 font-medium text-ink-2 hover:text-ink sm:px-3"
+          >
             Demo store
           </Link>
-          <Link to="/login" className="rounded-lg px-2 py-2 font-medium text-ink-2 hover:text-ink sm:px-3">
+          <Link
+            to="/login"
+            className="rounded-lg px-2 py-2 font-medium text-ink-2 hover:text-ink sm:px-3"
+          >
             Dashboard
           </Link>
           <a

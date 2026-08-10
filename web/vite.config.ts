@@ -18,18 +18,7 @@ export default defineConfig({
       "/tonconnect-manifest.json": { target: api },
     },
   },
-  build: {
-    target: "es2022",
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("@tonconnect") || id.includes("@ton/")) return "ton";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts";
-          return undefined;
-        },
-      },
-    },
-  },
+  build: { target: "es2022", chunkSizeWarningLimit: 800 },
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],

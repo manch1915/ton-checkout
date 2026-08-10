@@ -1,3 +1,5 @@
+import "@/polyfills";
+
 import { Address, beginCell, toNano } from "@ton/core";
 import type { SendTransactionRequest } from "@tonconnect/ui-react";
 
