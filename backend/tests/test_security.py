@@ -153,3 +153,12 @@ async def test_ton_proof_rejects_foreign_state_init_domain_and_age() -> None:
     wrong_domain = replace(old, domain="evil.test", domain_length=9)
     with pytest.raises(ProofError, match="domain"):
         await verifier.verify(wrong_domain, expected_payload="p", now=1_800_000_000)
+
+
+def test_signature_accepted_by_official_standard_webhooks_library() -> None:
+    from standardwebhooks import Webhook
+
+    secret = signing.new_secret()
+    body = b'{"type":"invoice.paid","data":{}}'
+    headers = signing.signed_headers(secret, "evt_compat", body)
+    assert Webhook(secret).verify(body, headers) == {"type": "invoice.paid", "data": {}}

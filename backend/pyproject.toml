@@ -25,6 +25,7 @@ dev = [
     "pytest-asyncio>=1.4",
     "respx>=0.23.1",
     "ruff>=0.17",
+    "standardwebhooks>=1.1.0",
 ]
 tools = [
     "tonutils>=2.5.1",
