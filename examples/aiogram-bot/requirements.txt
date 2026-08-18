@@ -1,0 +1,4 @@
+aiogram>=3.31
+aiohttp>=3.12
+httpx>=0.28
+standardwebhooks>=1.1
