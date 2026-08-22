@@ -1,9 +1,13 @@
 import "@/polyfills";
 
 import { Address, beginCell, toNano } from "@ton/core";
-import type { SendTransactionRequest } from "@tonconnect/ui-react";
-
 import type { PayOption } from "./types";
+
+/** Raw-messages form of a TON Connect request, accepted by every wallet. */
+export interface MessagesRequest {
+  validUntil: number;
+  messages: { address: string; amount: string; payload?: string }[];
+}
 
 const VALID_FOR_SECONDS = 5 * 60;
 // Covers the jetton transfer and the notification to the merchant; the rest comes back as excess.
@@ -13,7 +17,7 @@ function validUntil(): number {
   return Math.floor(Date.now() / 1000) + VALID_FOR_SECONDS;
 }
 
-export function tonTransfer(option: PayOption, recipient: string): SendTransactionRequest {
+export function tonTransfer(option: PayOption, recipient: string): MessagesRequest {
   return {
     validUntil: validUntil(),
     messages: [
@@ -29,7 +33,7 @@ export function jettonTransfer(
   payer: string,
   payerJettonWallet: string,
   reference: string,
-): SendTransactionRequest {
+): MessagesRequest {
   const comment = beginCell().storeUint(0, 32).storeStringTail(reference).endCell();
   const body = beginCell()
     .storeUint(0x0f8a7ea5, 32)
