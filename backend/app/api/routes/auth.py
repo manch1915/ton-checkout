@@ -35,7 +35,7 @@ def _start_session(
         token,
         max_age=settings.session_ttl_hours * 3600,
         httponly=True,
-        secure=settings.env == "prod",
+        secure=settings.public_url.startswith("https://"),
         samesite="lax",
     )
     return SessionResponse(merchant_id=merchant.id, name=merchant.name, demo=merchant.is_demo)
