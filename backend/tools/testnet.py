@@ -54,7 +54,8 @@ def _save(data: dict[str, Any]) -> None:
 
 
 def _client() -> ToncenterClient:
-    return ToncenterClient(network=NetworkGlobalID.TESTNET, rps_limit=1)
+    # Keyless toncenter allows about one request per second per IP.
+    return ToncenterClient(network=NetworkGlobalID.TESTNET, rps_limit=1, rps_period=2)
 
 
 def _wallet(client: ToncenterClient, role: str) -> WalletV5R1:
