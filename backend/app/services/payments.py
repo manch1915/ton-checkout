@@ -15,6 +15,12 @@ from app.services.events import EventRecorder
 
 log = structlog.get_logger()
 
+DUST_NOTE = "dust"
+
+
+def note_has_ref(note: str | None) -> bool:
+    return bool(note and note.startswith("unknown reference"))
+
 
 class TransferSource(StrEnum):
     CHAIN = "chain"
@@ -46,11 +52,13 @@ class PaymentProcessor:
         *,
         usdt_master: str | None,
         tolerance_nano: int,
+        dust_nano: int = 0,
     ):
         self._session = session
         self._events = events
         self._usdt_master = usdt_master
         self._tolerance = tolerance_nano
+        self._dust = dust_nano
 
     async def process(self, transfer: IncomingTransfer, source: TransferSource) -> ProcessResult:
         inserted = await self._session.scalar(
@@ -78,6 +86,12 @@ class PaymentProcessor:
         row = await self._session.get_one(Transfer, inserted)
         invoice, note = await self._find_invoice(transfer, source)
         if invoice is None:
+            if (
+                transfer.asset is Asset.TON
+                and transfer.amount < self._dust
+                and not note_has_ref(note)
+            ):
+                note = DUST_NOTE
             row.note = note
             await self._session.commit()
             log.info("payment.unmatched", tx=transfer.tx_hash, note=note)

@@ -209,3 +209,13 @@ async def test_expiry_sweeper(
         count = await container.invoices(s).expire_due(datetime.now(UTC) + timedelta(minutes=6))
     assert count == 1
     assert (await _reload(container, invoice.id)).status is InvoiceStatus.EXPIRED
+
+
+async def test_spam_dust_is_kept_out_of_review(
+    container: Container, session: AsyncSession, merchant: Merchant
+) -> None:
+    await _process(container, transfer("Get 300 testnet TON | TG: @spam", 1_000_000))
+    async with container.sessions() as s:
+        row = await s.scalar(select(Transfer))
+    assert row is not None
+    assert row.note == "dust"

@@ -47,7 +47,7 @@ class TonApiProvider:
                 int(tx.get("utime", 0)) < min_time
                 or msg.get("msg_type") != "int_msg"
                 or msg.get("bounced")
-                or tx.get("aborted")
+                or tx.get("bounce_phase")
                 or msg.get("op_code") not in (None, "0x00000000")
             ):
                 continue
@@ -58,7 +58,9 @@ class TonApiProvider:
                     tx_hash=tx["hash"],
                     lt=int(tx["lt"]),
                     asset=Asset.TON,
-                    amount=int(msg.get("value") or 0),
+                    amount=int(
+                        (tx.get("credit_phase") or {}).get("credit") or msg.get("value") or 0
+                    ),
                     sender=to_raw(msg["source"]["address"]),
                     recipient=to_raw(tx["account"]["address"]),
                     comment=comment,

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api.deps import ContainerDep, MerchantDep, SessionDep, rate_limit
 from app.api.schemas import CreateInvoiceRequest, InvoicePage, VerifyRequest, verify_wallet_proof
@@ -24,7 +24,7 @@ from app.infrastructure.db.models import (
 from app.infrastructure.ton.address import to_friendly
 from app.services.auth import ApiKeyService
 from app.services.invoices import InvoiceError, InvoiceFilter
-from app.services.payments import Outcome
+from app.services.payments import DUST_NOTE, Outcome
 from app.services.stats import StatsService
 from app.services.views import InvoiceView, TransferView, transfer_view
 from app.services.webhook_admin import WebhookAdmin, WebhookAdminError
@@ -492,6 +492,7 @@ async def unmatched_transfers(
     rows = await session.scalars(
         select(Transfer)
         .where(Transfer.invoice_id.is_(None), Transfer.recipient == merchant.wallet_address)
+        .where(or_(Transfer.note.is_(None), Transfer.note != DUST_NOTE))
         .order_by(Transfer.occurred_at.desc())
         .limit(100)
     )

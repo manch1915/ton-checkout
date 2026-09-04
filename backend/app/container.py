@@ -70,6 +70,7 @@ class Container:
             self.events(session),
             usdt_master=self.usdt_master,
             tolerance_nano=self.settings.underpay_tolerance_nano,
+            dust_nano=self.settings.dust_threshold_nano,
         )
 
     def watcher(self) -> ChainWatcher:

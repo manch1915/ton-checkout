@@ -2,12 +2,13 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Date, case, cast, func, select
+from sqlalchemy import Date, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.enums import Asset, DeliveryState, InvoiceStatus, Mode
 from app.domain.pricing import units_to_decimal
 from app.infrastructure.db.models import Event, Invoice, Merchant, Transfer, WebhookDelivery
+from app.services.payments import DUST_NOTE
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +98,7 @@ class StatsService:
             select(func.count())
             .select_from(Transfer)
             .where(Transfer.invoice_id.is_(None), Transfer.recipient == wallet)
+            .where(or_(Transfer.note.is_(None), Transfer.note != DUST_NOTE))
         )
         deliveries = (
             await self._session.execute(

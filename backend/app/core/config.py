@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     invoice_ttl_minutes: int = 30
     # Tolerance for rounding in wallets that cut the last digits of nanoTON.
     underpay_tolerance_nano: int = 1_000
+    # Testnet and mainnet wallets get spammed with tiny transfers carrying ads in the comment.
+    # Below this amount a transfer without a payment code is recorded but kept out of review.
+    dust_threshold_nano: int = 100_000_000
 
     stars_per_usd: float = 50.0
     webhook_retry_speedup: float = 1.0

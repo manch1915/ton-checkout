@@ -54,8 +54,12 @@ class ToncenterProvider:
         if not msg.get("source") or msg.get("bounced") or msg.get("opcode") not in _PAYMENT_OPCODES:
             return None
         description = tx.get("description") or {}
-        if description.get("aborted"):
+        # A wallet that is not deployed yet still keeps non-bounceable payments: the transaction
+        # is "aborted" (no code to run) but the credit phase holds the money. What matters is
+        # whether the value was bounced back, not whether compute ran.
+        if description.get("bounce"):
             return None
+        credited = (description.get("credit_ph") or {}).get("credit")
         content = msg.get("message_content") or {}
         decoded = content.get("decoded") or {}
         comment = decoded.get("comment") or decode_text_comment(content.get("body"))
@@ -63,7 +67,7 @@ class ToncenterProvider:
             tx_hash=b64_hash_to_hex(tx["hash"]),
             lt=int(tx["lt"]),
             asset=Asset.TON,
-            amount=int(msg.get("value") or 0),
+            amount=int(credited if credited is not None else msg.get("value") or 0),
             sender=to_raw(msg["source"]),
             recipient=to_raw(tx["account"]),
             comment=comment,
