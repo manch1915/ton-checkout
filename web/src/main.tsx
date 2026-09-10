@@ -1,17 +1,14 @@
 import "./index.css";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
 
+import { queryClient } from "./lib/queryClient";
 import { router } from "./router";
 import { applyTheme } from "./lib/theme";
 import { loadTelegramScript, telegram } from "./lib/telegram";
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false } },
-});
 
 async function boot() {
   const params = new URLSearchParams(window.location.search);

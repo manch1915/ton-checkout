@@ -1,25 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Wallet } from "lucide-react";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 
-import { TonProvider } from "@/components/TonProvider";
 import { Button, CopyButton, Field, Notice, Skeleton, inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 
 import { PageHeader } from "./parts";
 import { profileKey, useProfile } from "./session";
-import { useWalletProof } from "./useWalletProof";
+
+const WalletProofButton = lazy(() => import("./WalletProofButton"));
 
 export function Settings() {
-  return (
-    <TonProvider>
-      <SettingsScreen />
-    </TonProvider>
-  );
-}
-
-function SettingsScreen() {
   const profile = useProfile();
   if (!profile.data) return <Skeleton className="h-96 w-full rounded-2xl" />;
   return (
@@ -132,10 +123,6 @@ function StoreForm({ profile }: { profile: Profile }) {
 
 function WalletCard({ profile }: { profile: Profile }) {
   const client = useQueryClient();
-  const change = useWalletProof(async (body) => {
-    const updated = await api.post<Profile>("/api/dashboard/wallet", body);
-    client.setQueryData(profileKey, updated);
-  });
   return (
     <section className="space-y-4 rounded-2xl border border-line bg-surface p-6">
       <h2 className="font-semibold">Payout wallet</h2>
@@ -153,22 +140,26 @@ function WalletCard({ profile }: { profile: Profile }) {
         </p>
       ) : (
         <>
-          <Button
-            variant="secondary"
-            onClick={change.start}
-            busy={change.busy}
-            icon={<Wallet className="size-4" />}
+          <Suspense
+            fallback={
+              <Button size="lg" variant="secondary" className="w-full" busy>
+                Switch to another wallet
+              </Button>
+            }
           >
-            Switch to another wallet
-          </Button>
+            <WalletProofButton
+              label="Switch to another wallet"
+              variant="secondary"
+              errorTitle="Wallet not changed"
+              onProof={async (body) => {
+                const updated = await api.post<Profile>("/api/dashboard/wallet", body);
+                client.setQueryData(profileKey, updated);
+              }}
+            />
+          </Suspense>
           <p className="text-xs text-ink-3">
             You will sign a message in the new wallet to prove it is yours.
           </p>
-          {change.error && (
-            <Notice tone="danger" title="Wallet not changed">
-              {change.error}
-            </Notice>
-          )}
         </>
       )}
       <dl className="space-y-1.5 border-t border-line pt-4 text-sm">

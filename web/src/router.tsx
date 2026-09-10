@@ -1,11 +1,23 @@
 import { createBrowserRouter } from "react-router";
 
+import { api } from "./lib/api";
+import { queryClient } from "./lib/queryClient";
+import type { PublicInvoice } from "./lib/types";
 import { RouteError } from "./pages/RouteError";
 
 export const router = createBrowserRouter([
   {
     path: "/pay/:invoiceId",
     ErrorBoundary: RouteError,
+    // Start loading the invoice while the page code is still downloading.
+    loader: ({ params }) => {
+      const id = params.invoiceId ?? "";
+      void queryClient.prefetchQuery({
+        queryKey: ["pay", id],
+        queryFn: () => api.get<PublicInvoice>(`/api/pay/${id}`),
+      });
+      return null;
+    },
     lazy: async () => ({ Component: (await import("./pages/PayPage")).PayPage }),
   },
   {

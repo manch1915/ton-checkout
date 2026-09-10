@@ -2,21 +2,12 @@ import { ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import { useParams } from "react-router";
 
-import { TonProvider } from "@/components/TonProvider";
 import { Notice, Skeleton, ThemeToggle } from "@/components/ui";
 import { PayCard } from "@/features/pay/PayCard";
 import { usePaymentStream } from "@/features/pay/usePaymentStream";
 import { ApiError } from "@/lib/api";
 
 export function PayPage() {
-  return (
-    <TonProvider>
-      <Payment />
-    </TonProvider>
-  );
-}
-
-function Payment() {
   const { invoiceId = "" } = useParams();
   const embedded = new URLSearchParams(window.location.search).has("embed");
   const { data, error, isPending, live } = usePaymentStream(invoiceId);
@@ -64,10 +55,12 @@ function Payment() {
         ) : (
           <PayCard invoice={data} live={live} />
         )}
-        {!embedded && data && (
+        {!embedded && (
           <p className="mt-5 text-center text-xs leading-relaxed text-ink-3">
-            The payment goes straight to {data.merchant}'s wallet, no one holds it in between.
-            {data.network === "testnet" && " TON testnet: test coins only."}
+            Your payment goes straight to the store's own wallet. Nobody holds the money in between.
+            {data?.network === "testnet" && (
+              <span className="block">TON testnet: test coins only.</span>
+            )}
           </p>
         )}
       </div>

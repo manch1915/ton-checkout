@@ -1,25 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Store, Wallet } from "lucide-react";
-import { useState } from "react";
+import { Store } from "lucide-react";
+import { Suspense, lazy, useState } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { TonProvider } from "@/components/TonProvider";
 import { Button, Notice, ThemeToggle } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { SessionInfo } from "@/lib/types";
 
 import { profileKey } from "./session";
-import { useWalletProof } from "./useWalletProof";
+
+const WalletProofButton = lazy(() => import("./WalletProofButton"));
 
 export function Login() {
-  return (
-    <TonProvider>
-      <LoginScreen />
-    </TonProvider>
-  );
-}
-
-function LoginScreen() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const [demoBusy, setDemoBusy] = useState(false);
@@ -29,10 +21,6 @@ function LoginScreen() {
     await client.invalidateQueries({ queryKey: profileKey });
     navigate("/dashboard");
   };
-  const wallet = useWalletProof(async (body) => {
-    await api.post<SessionInfo>("/api/auth/ton-proof/verify", body);
-    await enter();
-  });
 
   const demo = async () => {
     setDemoBusy(true);
@@ -61,15 +49,22 @@ function LoginScreen() {
           is stored anywhere.
         </p>
         <div className="mt-8 space-y-3">
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={wallet.start}
-            busy={wallet.busy}
-            icon={<Wallet className="size-4" />}
+          <Suspense
+            fallback={
+              <Button size="lg" className="w-full" busy>
+                Sign in with a TON wallet
+              </Button>
+            }
           >
-            Sign in with a TON wallet
-          </Button>
+            <WalletProofButton
+              label="Sign in with a TON wallet"
+              errorTitle="Could not sign in"
+              onProof={async (body) => {
+                await api.post<SessionInfo>("/api/auth/ton-proof/verify", body);
+                await enter();
+              }}
+            />
+          </Suspense>
           <Button
             size="lg"
             variant="secondary"
@@ -84,10 +79,10 @@ function LoginScreen() {
         <p className="mt-3 text-sm text-ink-3">
           The demo store has two weeks of orders and is shared by everyone who opens it.
         </p>
-        {(wallet.error || error) && (
+        {error && (
           <div className="mt-6">
             <Notice tone="danger" title="Could not sign in">
-              {wallet.error ?? error}
+              {error}
             </Notice>
           </div>
         )}
