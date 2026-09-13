@@ -75,7 +75,7 @@ curl http://localhost:5180/v1/invoices \
 | `GET` | `/v1/invoices/{id}` | One invoice |
 | `POST` | `/v1/invoices/{id}/cancel` | Cancel an open invoice |
 
-Interactive documentation is served at `/api/docs`.
+Interactive documentation is served at `/api/docs`. Deployment behind Caddy is described in [docs/deploy.md](docs/deploy.md).
 
 **Webhook events:** `invoice.created`, `invoice.partially_paid`, `invoice.paid`, `invoice.expired`, `invoice.canceled`. The body is `{"id", "type", "created_at", "data": {"invoice": {...}}}` and the headers are `webhook-id`, `webhook-timestamp` and `webhook-signature`. Verify them with any Standard Webhooks library:
 

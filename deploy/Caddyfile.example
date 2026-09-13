@@ -1,0 +1,20 @@
+# Add this block to the Caddyfile of a proxy that shares the docker network with the stack.
+# "ton-checkout-web-1" is the web container name from compose.
+
+checkout.example.com {
+	encode zstd gzip
+
+	# Server-sent events for the payment page must not be buffered.
+	@events path /api/pay/*/events
+	reverse_proxy @events ton-checkout-web-1:80 {
+		flush_interval -1
+	}
+
+	reverse_proxy ton-checkout-web-1:80
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

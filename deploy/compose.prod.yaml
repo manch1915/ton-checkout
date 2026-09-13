@@ -1,0 +1,22 @@
+# Production override: the web container joins the network of an existing reverse proxy
+# (Caddy, Traefik) instead of publishing a port on the host.
+#
+#   docker compose -f compose.yaml -f deploy/compose.prod.yaml up -d --build
+#
+# PROXY_NETWORK is the docker network your proxy container is attached to.
+
+services:
+  web:
+    ports: !reset []
+    networks: [default, proxy]
+
+  db:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-proxy}
+    external: true
