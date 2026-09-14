@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     demo_enabled: bool = True
     demo_wallet_address: str = ""
     # Where the demo shop receives our webhooks. Inside docker compose this is the api service.
-    shop_webhook_url: str = "http://localhost:8000/api/shop/webhook"
+    shop_webhook_url: str = "http://localhost:8010/api/shop/webhook"
     rate_limit_per_minute: int = 120
 
     @model_validator(mode="after")

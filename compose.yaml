@@ -7,7 +7,7 @@ x-backend: &backend
     ENV: prod
     DATABASE_URL: postgresql+asyncpg://checkout:${POSTGRES_PASSWORD:-checkout}@db:5432/checkout
     REDIS_URL: redis://redis:6379/0
-    SHOP_WEBHOOK_URL: http://api:8000/api/shop/webhook
+    SHOP_WEBHOOK_URL: http://ton-checkout-api:8000/api/shop/webhook
   depends_on:
     db:
       condition: service_healthy
@@ -45,6 +45,11 @@ services:
 
   api:
     <<: *backend
+    networks:
+      default:
+        # Unique name: in production the web container also sits on a shared proxy network
+        # where a plain "api" could resolve to some other project's container.
+        aliases: [ton-checkout-api]
     command: ["sh", "-c", "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*'"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=4)"]
@@ -62,6 +67,8 @@ services:
 
   web:
     build: ./web
+    environment:
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-172.16.0.0/12}
     depends_on:
       - api
     ports:

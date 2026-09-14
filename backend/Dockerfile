@@ -14,6 +14,6 @@ COPY --from=build --chown=app:app /app /app
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 USER app
 EXPOSE 8000
-# The API is reachable only through the web container's nginx, which sends a single
-# client address in X-Forwarded-For, so trusting it here is safe.
+# The API is reachable only through the web container's nginx (no published port), which
+# sends a single client address in X-Forwarded-For.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

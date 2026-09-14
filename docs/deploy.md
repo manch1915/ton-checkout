@@ -9,11 +9,14 @@ The stack is five containers: PostgreSQL, Redis, the API, the worker and the web
    - a random `SECRET_KEY` (48+ characters) and a `POSTGRES_PASSWORD`
    - `DEMO_WALLET_ADDRESS`, `USDT_JETTON_MASTER`, optional `TONCENTER_API_KEY`
    - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME` if the Stars bot should run
-2. Start it attached to the proxy's docker network:
+2. Find the proxy's address on its network, then start the stack attached to that network:
 
    ```bash
-   PROXY_NETWORK=caddy_default docker compose -f compose.yaml -f deploy/compose.prod.yaml up -d --build
+   docker inspect caddy --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'
+   PROXY_NETWORK=caddy_default TRUSTED_PROXY=172.18.0.2 docker compose -f compose.yaml -f deploy/compose.prod.yaml up -d --build
    ```
+
+   `TRUSTED_PROXY` is the only source nginx accepts `X-Forwarded-For` from. The API is reachable inside the stack as `ton-checkout-api`, a name that will not clash with other projects on the shared network.
 
 3. Add the block from `deploy/Caddyfile.example` to the Caddyfile, then validate and reload without restarting the proxy:
 
@@ -37,6 +40,6 @@ docker compose logs worker --tail 20                    # watcher.tick, webhooks
 
 ## Notes
 
-- The API trusts `X-Forwarded-For` only from the web container, and nginx in turn takes the client address only from private networks (the proxy). Do not publish the API port.
+- The API trusts `X-Forwarded-For` only from the web container, and nginx takes the client address only from `TRUSTED_PROXY`. Do not publish the API port.
 - Without a toncenter key the watcher waits about a second between requests. With many merchant wallets, get a free key at toncenter.com.
 - Webhook endpoints must be public HTTPS addresses. The worker resolves the host before every delivery and refuses private networks.

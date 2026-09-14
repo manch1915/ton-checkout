@@ -4,6 +4,8 @@
 #   docker compose -f compose.yaml -f deploy/compose.prod.yaml up -d --build
 #
 # PROXY_NETWORK is the docker network your proxy container is attached to.
+# TRUSTED_PROXY is the proxy's address (or that network's subnet): only requests from it may
+# set the client IP through X-Forwarded-For.
 
 services:
   web:
