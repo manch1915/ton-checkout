@@ -11,6 +11,9 @@ services:
   web:
     ports: !reset []
     networks: [default, proxy]
+    environment:
+      # No default on purpose: a wrong value lets anyone on the shared network fake client IPs.
+      TRUSTED_PROXY: ${TRUSTED_PROXY:?set TRUSTED_PROXY to the reverse proxy address}
 
   db:
     ports: !reset []

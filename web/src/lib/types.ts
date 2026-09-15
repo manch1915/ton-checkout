@@ -38,6 +38,7 @@ export interface PayOption {
 
 export interface PublicInvoice {
   id: string;
+  stars_demo: boolean;
   status: InvoiceStatus;
   mode: Mode;
   network: "testnet" | "mainnet";

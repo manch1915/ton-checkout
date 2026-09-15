@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     telegram_test_env: bool = True
     # For a public demo on a production bot: give Stars back right after the order is fulfilled.
     stars_auto_refund: bool = False
+    # Demo mode: the Stars button runs the payment simulator, nothing is charged and the bot
+    # is only used for links. Turn off to sell for real Stars through createInvoiceLink.
+    stars_demo: bool = True
+    # Long polling takes every update of the bot. Keep it off when the bot is shared with
+    # other projects or is driven by a webhook elsewhere.
+    telegram_bot_polling: bool = False
 
     ton_proof_domain: str = "localhost:5173"
     ton_proof_ttl_seconds: int = 15 * 60

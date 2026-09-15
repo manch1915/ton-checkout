@@ -56,13 +56,13 @@ async def run() -> None:
         _loop("expiry", 15, lambda: _expire(container)),
         _loop("webhooks", 2, webhooks.run_due),
     ]
-    if container.bot is not None:
+    if container.bot is not None and settings.telegram_bot_polling:
         tasks.append(_run_bot(container))
     log.info(
         "worker.started",
         network=settings.ton_network,
         provider=container.provider.name,
-        bot=container.bot is not None,
+        bot_polling=container.bot is not None and settings.telegram_bot_polling,
     )
     try:
         await asyncio.gather(*tasks)

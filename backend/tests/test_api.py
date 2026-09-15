@@ -178,3 +178,25 @@ async def test_shop_order_is_fulfilled_by_signed_webhook(
 async def test_shop_rejects_unsigned_webhook(client: httpx.AsyncClient, merchant: Merchant) -> None:
     response = await client.post("/api/shop/webhook", json={"type": "invoice.paid", "data": {}})
     assert response.status_code == 401
+
+
+async def test_stars_are_simulated_in_demo_mode(
+    client: httpx.AsyncClient, container: Container, merchant: Merchant
+) -> None:
+    order = (
+        await client.post(
+            "/api/shop/orders",
+            json={"product_id": "rec-jazz-oct", "channel": "telegram_mini_app"},
+        )
+    ).json()
+    page = (await client.get(f"/api/pay/{order['invoice_id']}")).json()
+    assert page["stars_demo"] is True
+    assert [o["asset"] for o in page["options"]] == ["XTR"]
+
+    real = await client.post(f"/api/pay/{order['invoice_id']}/stars-link")
+    assert real.status_code == 503
+
+    paid = await client.post(
+        f"/api/pay/{order['invoice_id']}/simulate", json={"asset": "XTR", "fraction": "0.5"}
+    )
+    assert paid.json()["status"] == "paid"  # Stars ignore partial amounts

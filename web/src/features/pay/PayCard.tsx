@@ -181,17 +181,24 @@ function Payable({ invoice, live }: { invoice: PublicInvoice; live: boolean }) {
 function StarsPay({ invoice }: { invoice: PublicInvoice }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  if (!isTelegram()) {
+  const stars = invoice.options.find((o) => o.asset === "XTR");
+
+  if (!invoice.stars_demo && !isTelegram()) {
     return (
       <Notice tone="info" title="Stars work inside Telegram">
         Open this store from the Telegram bot to pay with Stars.
       </Notice>
     );
   }
+
   const pay = async () => {
     setBusy(true);
     setError(null);
     try {
+      if (invoice.stars_demo) {
+        await api.post(`/api/pay/${invoice.id}/simulate`, { asset: "XTR" });
+        return;
+      }
       const { url } = await api.post<{ url: string }>(`/api/pay/${invoice.id}/stars-link`);
       const result = await openStarsInvoice(url);
       if (result === "paid") telegram()?.HapticFeedback?.notificationOccurred("success");
@@ -202,12 +209,17 @@ function StarsPay({ invoice }: { invoice: PublicInvoice }) {
       setBusy(false);
     }
   };
-  const stars = invoice.options.find((o) => o.asset === "XTR");
+
   return (
     <div className="space-y-3">
       <Button size="lg" className="w-full" onClick={pay} busy={busy}>
         Pay {stars?.amount} Stars
       </Button>
+      {invoice.stars_demo && (
+        <p className="text-center text-xs text-ink-3">
+          Demo store: the Stars payment is simulated, nothing is charged.
+        </p>
+      )}
       {error && (
         <Notice tone="danger" title="Payment not completed">
           {error}

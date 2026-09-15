@@ -12,7 +12,7 @@ Payments in Gram, USDT and Telegram Stars for Telegram bots, Mini Apps and websi
 
 - **Invoices in fiat, paid in crypto.** Price in USD or EUR, quoted in Gram and USDT at the rate of the moment and locked for the invoice lifetime.
 - **TON Connect payments.** One tap from Keeper, My Wallet, Walt and other wallets in the registry, plus a QR code and `ton://` link for paying from another device. USDT is sent as a proper TEP-74 jetton transfer.
-- **Telegram Stars** for digital goods in bots and Mini Apps, with pre-checkout checks and refunds.
+- **Telegram Stars** for digital goods in bots and Mini Apps, with pre-checkout checks and refunds. The public demo runs Stars in simulation mode (`STARS_DEMO=true`), so its bot never charges anyone; set it to `false` to sell for real Stars.
 - **Telegram's rules built in.** Each invoice offers only the methods allowed for its product type and channel: Stars only for digital goods inside Telegram, Gram and USDT for tickets and physical goods, any on-chain method on a website.
 - **Chain watcher** on toncenter v3 with TonAPI as a drop-in alternative. It handles underpayment, top-ups, overpayment, late payment, fake USDT jettons, duplicate deliveries and unfinalized transactions.
 - **Live status for the buyer** over server-sent events, with polling as a fallback.

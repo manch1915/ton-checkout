@@ -46,6 +46,7 @@ class PayOption(BaseModel):
 
 class PublicInvoice(BaseModel):
     id: str
+    stars_demo: bool
     status: InvoiceStatus
     mode: Mode
     network: str
@@ -128,6 +129,7 @@ async def build_public(
     locked = invoice.asset
     return PublicInvoice(
         id=invoice.id,
+        stars_demo=container.settings.stars_demo,
         status=invoice.status,
         mode=invoice.mode,
         network=container.settings.ton_network,
@@ -226,12 +228,15 @@ async def simulate_payment(
             status.HTTP_403_FORBIDDEN, "simulation works for test-mode invoices only"
         )
     units = invoice.quote(body.asset)
-    if units is None or not body.asset.on_chain:
+    stars_off = body.asset is Asset.STARS and not container.settings.stars_demo
+    if units is None or stars_off:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, f"{body.asset} is not on this invoice"
         )
     due = units - (int(invoice.received) if invoice.asset is body.asset else 0)
-    amount = int((Decimal(max(due, 1)) * body.fraction).to_integral_value())
+    # Stars are paid in one go, a partial Stars payment does not exist.
+    fraction = Decimal(1) if body.asset is Asset.STARS else body.fraction
+    amount = int((Decimal(max(due, 1)) * fraction).to_integral_value())
     transfer = IncomingTransfer(
         tx_hash=new_id("sandbox"),
         lt=0,
@@ -256,10 +261,8 @@ async def stars_link(
 ) -> StarsLinkResponse:
     """Invoice link for `Telegram.WebApp.openInvoice`. Works only inside Telegram."""
     invoice = await _load(invoice_id, container, session)
-    if container.bot is None:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "the Telegram bot is not configured"
-        )
+    if container.bot is None or container.settings.stars_demo:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "real Stars payments are off here")
     if not invoice.status.is_open:
         raise HTTPException(status.HTTP_409_CONFLICT, f"invoice is {invoice.status}")
     try:

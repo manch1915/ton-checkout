@@ -6,7 +6,8 @@ import { useNavigate, useSearchParams } from "react-router";
 import { AssetTag, Button, Notice, Skeleton, cx } from "@/components/ui";
 import { api, query } from "@/lib/api";
 import { money } from "@/lib/format";
-import { isTelegram, openStarsInvoice } from "@/lib/telegram";
+import { isTelegram } from "@/lib/telegram";
+
 import type { Channel, Product, ShopOrder } from "@/lib/types";
 
 export function Catalog() {
@@ -119,21 +120,8 @@ function ProductRow({ product, channel }: { product: Product; channel: Channel }
 
   const order = useMutation({
     mutationFn: () => api.post<ShopOrder>("/api/shop/orders", { product_id: product.id, channel }),
-    onSuccess: async (created) => {
-      if (starsOnly && isTelegram()) {
-        try {
-          const { url } = await api.post<{ url: string }>(
-            `/api/pay/${created.invoice_id}/stars-link`,
-          );
-          await openStarsInvoice(url);
-          navigate(`/shop/orders/${created.id}`);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Could not open the Stars invoice.");
-        }
-        return;
-      }
-      navigate(`/pay/${created.invoice_id}`);
-    },
+    // The payment page decides how to pay, Stars included (simulated in the demo).
+    onSuccess: (created) => navigate(`/pay/${created.invoice_id}`),
     onError: (e) => setError(e instanceof Error ? e.message : "Could not start the order."),
   });
 
