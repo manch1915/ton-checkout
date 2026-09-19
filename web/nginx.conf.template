@@ -12,6 +12,8 @@ server {
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
 
+    # add_header in a location replaces the server-level ones, so every location that sets
+    # its own headers repeats these two.
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
 
@@ -36,20 +38,27 @@ server {
     location = /tonconnect-manifest.json {
         proxy_pass http://ton-checkout-api:8000;
         add_header Access-Control-Allow-Origin * always;
+        add_header X-Content-Type-Options nosniff always;
     }
 
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
     }
 
     location = /checkout.js {
         add_header Cache-Control "public, max-age=300";
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
         add_header Access-Control-Allow-Origin * always;
     }
 
     location / {
         try_files $uri /index.html;
         add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
     }
 }

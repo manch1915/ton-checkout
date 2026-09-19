@@ -6,6 +6,8 @@ Payments in Gram, USDT and Telegram Stars for Telegram bots, Mini Apps and websi
 
 ![Payment page and merchant dashboard](docs/screenshots/hero.png)
 
+**Live demo: <https://checkout.narcisbin.com>**: the [demo store](https://checkout.narcisbin.com/shop) and the [dashboard](https://checkout.narcisbin.com/login) (choose **Open the demo store**).
+
 > Runs on TON testnet with test coins. Toncoin was renamed **Gram (GRAM)** in June 2026; the network is still TON and APIs still use the `TON` code, so the code says `TON` and the interface says Gram.
 
 ## What you get
